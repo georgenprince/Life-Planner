@@ -774,7 +774,25 @@
   }
   .gym-set-input:focus { border-color: var(--accent); outline: none; }
   .gym-prev { font-size: 9px; color: var(--muted); font-family: var(--mono); text-align: center; }
-  /* PROFILE MENU */
+  /* TO DO */
+  .todo-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+  }
+  .todo-row:last-child { border-bottom: none; }
+  .todo-check {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 1px solid var(--border); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: transparent; flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .todo-check.done { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .todo-text { flex: 1; min-width: 0; }
+  .todo-title { font-size: 13px; line-height: 1.4; }
+  .todo-title.done { text-decoration: line-through; color: var(--muted); }
+  .todo-note { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-top: 1px; }
+  #todo-modal-overlay { z-index: 200; }
   .menu-item {
     display: flex; align-items: center; justify-content: space-between;
     padding: 11px 14px; font-size: 12px; cursor: pointer;
@@ -958,6 +976,18 @@
         <div class="card-body" id="gym-card-body"></div>
       </div>
 
+      <!-- TO DO -->
+      <div class="card" data-card-id="todo">
+        <div class="card-head" oncontextmenu="openArrangeCards(event)">
+          <h3>To Do</h3>
+          <div class="head-btns">
+            <button class="edit-btn" onclick="toggleEdit('todo-list', this)">edit</button>
+            <button class="add-btn" onclick="openTodoModal()">+</button>
+          </div>
+        </div>
+        <div class="card-body" id="todo-list"></div>
+      </div>
+
       <!-- FINANCE -->
       <div class="card" data-card-id="finance">
         <div class="card-head" oncontextmenu="openArrangeCards(event)">
@@ -1000,6 +1030,25 @@
       </div>
     </div>
     <div class="lists-popup-body" style="padding:0 20px 32px" id="gym-popup-body"></div>
+  </div>
+</div>
+
+<!-- TODO MODAL -->
+<div class="modal-overlay" id="todo-modal-overlay" onclick="closeTodoModal(event)">
+  <div class="modal">
+    <h3 id="todo-modal-title">Add To Do</h3>
+    <div class="form-field">
+      <label>Task</label>
+      <input id="todo-f-title" placeholder="What needs to get done?">
+    </div>
+    <div class="form-field">
+      <label>Note (optional)</label>
+      <input id="todo-f-note" placeholder="Any extra detail">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm" onclick="closeTodoModal()">Cancel</button>
+      <button class="btn-sm primary" onclick="saveTodoModal()">Save</button>
+    </div>
   </div>
 </div>
 
@@ -2801,10 +2850,83 @@ function closeGymPopup(e) {
 }
 
 
+// ──────────────────────────────────────────────
+// TO DO
+// ──────────────────────────────────────────────
+if (!state.todos) state.todos = [];
+
+function renderTodos() {
+  const el = document.getElementById('todo-list');
+  if (!el) return;
+  const wasEdit = el.classList.contains('edit-mode');
+  if (state.todos.length === 0) {
+    el.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:4px 0">No tasks yet. Tap + to add one.</div>`;
+    return;
+  }
+  el.innerHTML = state.todos.map(t => `
+    <div class="todo-row" draggable="true" data-id="${t.id}">
+      <span class="drag-handle">⠿</span>
+      <div class="todo-check${t.done?' done':''}" onclick="toggleTodo(${t.id})">
+        ${t.done ? '✓' : ''}
+      </div>
+      <div class="todo-text">
+        <div class="todo-title${t.done?' done':''}">${t.title}</div>
+        ${t.note ? `<div class="todo-note">${t.note}</div>` : ''}
+      </div>
+      <button class="habit-edit-btn" onclick="openTodoModal(${t.id})">✎</button>
+      <button class="delete-btn" onclick="deleteTodoItem(${t.id})">×</button>
+    </div>
+  `).join('');
+  if (wasEdit) el.classList.add('edit-mode');
+  setupDrag(el, state.todos, renderTodos);
+}
+
+function toggleTodo(id) {
+  const t = state.todos.find(x => x.id === id);
+  if (t) { t.done = !t.done; renderTodos(); saveData(); }
+}
+
+function deleteTodoItem(id) {
+  state.todos = state.todos.filter(x => x.id !== id);
+  renderTodos(); saveData();
+}
+
+let editingTodoId = null;
+
+function openTodoModal(id) {
+  editingTodoId = id || null;
+  const existing = id ? state.todos.find(x => x.id === id) : null;
+  document.getElementById('todo-modal-title').textContent = existing ? 'Edit Task' : 'Add To Do';
+  document.getElementById('todo-f-title').value = existing?.title || '';
+  document.getElementById('todo-f-note').value = existing?.note || '';
+  document.getElementById('todo-modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('todo-f-title').focus(), 100);
+}
+
+function saveTodoModal() {
+  const title = document.getElementById('todo-f-title').value.trim();
+  if (!title) return;
+  const note = document.getElementById('todo-f-note').value.trim();
+  if (editingTodoId) {
+    const t = state.todos.find(x => x.id === editingTodoId);
+    if (t) { t.title = title; t.note = note; }
+  } else {
+    state.todos.push({ id: Date.now(), title, note, done: false });
+  }
+  renderTodos(); saveData(); closeTodoModal();
+}
+
+function closeTodoModal(e) {
+  if (e && e.target !== document.getElementById('todo-modal-overlay')) return;
+  document.getElementById('todo-modal-overlay').classList.remove('open');
+  editingTodoId = null;
+}
+
 const CARD_DEFS = [
   { id: 'habits',  label: 'Habits' },
   { id: 'goals',   label: 'Goals & Milestones' },
   { id: 'gym',     label: 'Gym' },
+  { id: 'todo',    label: 'To Do' },
   { id: 'finance', label: 'Spending Tracker' },
   { id: 'lists',   label: 'Lists' },
 ];
@@ -3023,7 +3145,7 @@ function getDataObj() {
   return JSON.parse(JSON.stringify({
     events: state.events, habits: state.habits, goals: state.goals,
     budget: state.budget, health: state.health, lists: state.lists,
-    gym: state.gym, cardLayout: state.cardLayout,
+    gym: state.gym, cardLayout: state.cardLayout, todos: state.todos,
   }));
 }
 
@@ -3141,6 +3263,7 @@ async function loadData() {
   if (data.gym)        state.gym        = data.gym;
   if (data.lists)      state.lists      = Object.assign({ recipes:[], shows:[], books:[], places:[], notes:[] }, data.lists);
   if (data.cardLayout) state.cardLayout = data.cardLayout;
+  if (data.todos) state.todos = data.todos;
 }
 
 // ──────────────────────────────────────────────
@@ -3151,7 +3274,7 @@ function renderAll() {
   document.getElementById('today-label').textContent =
     `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()].slice(0,3)} ${d.getDate()}`;
   renderCal(); renderHabits(); renderGoals(); renderFinance();
-  initGym(); renderGymCard();
+  initGym(); renderGymCard(); renderTodos();
   renderList('recipes'); renderList('shows'); renderList('books');
   renderList('places'); renderList('notes');
   applyCardLayout(); setupCardLongPress();
@@ -3177,6 +3300,7 @@ function init() {
     openGymPopup, openGymLogger, openGymSession, saveGymSession, closeGymPopup,
     openArrangeCards, closeArrangeCards, toggleCardVisibility,
     deleteListItem, toggleProfileMenu, updateDarkIndicator,
+    openTodoModal, saveTodoModal, closeTodoModal, toggleTodo, deleteTodoItem,
   });
   showAuthScreen();
   onAuthStateChanged(auth, async (user) => {
