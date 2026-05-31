@@ -825,6 +825,7 @@
           ◑
         </button>
         <span id="user-name" style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-left:4px"></span>
+        <span id="sync-status" style="font-size:12px;color:var(--muted);margin-left:2px;cursor:default" title=""></span>
         <img id="user-avatar" style="width:24px;height:24px;border-radius:50%;display:none;cursor:pointer" title="Sign out" onclick="signOutUser()">
       </div>
     </div>
@@ -2996,8 +2997,6 @@ function loadDarkMode() {
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, signInWithPopup, signOut, GoogleAuthProvider, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, doc, setDoc, getDoc }
-  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDfI2XL26rj2hpXqusMIVTYbKiDHhsoT54",
@@ -3010,7 +3009,6 @@ const firebaseConfig = {
 
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
-const db = getFirestore(fbApp);
 const provider = new GoogleAuthProvider();
 let currentUser = null;
 
@@ -3032,20 +3030,73 @@ async function signOutUser() {
 }
 
 function getDataObj() {
-  return {
+  return JSON.parse(JSON.stringify({
     events: state.events, habits: state.habits, goals: state.goals,
     budget: state.budget, health: state.health, lists: state.lists,
     gym: state.gym, cardLayout: state.cardLayout,
+  }));
+}
+
+// ── Firestore via REST ──
+function firestoreUrl() {
+  return `https://firestore.googleapis.com/v1/projects/life-planner-dashboard/databases/(default)/documents/users/${currentUser.uid}`;
+}
+
+async function getIdToken() {
+  return currentUser ? await currentUser.getIdToken() : null;
+}
+
+// Convert JS object to Firestore REST format
+function toFirestore(obj) {
+  const convert = (val) => {
+    if (val === null) return { nullValue: null };
+    if (typeof val === 'boolean') return { booleanValue: val };
+    if (typeof val === 'number') return Number.isInteger(val) ? { integerValue: String(val) } : { doubleValue: val };
+    if (typeof val === 'string') return { stringValue: val };
+    if (Array.isArray(val)) return { arrayValue: { values: val.map(convert) } };
+    if (typeof val === 'object') return { mapValue: { fields: Object.fromEntries(Object.entries(val).map(([k,v]) => [k, convert(v)])) } };
+    return { stringValue: String(val) };
   };
+  return { fields: Object.fromEntries(Object.entries(obj).map(([k,v]) => [k, convert(v)])) };
+}
+
+// Convert Firestore REST format back to JS object
+function fromFirestore(fields) {
+  const convert = (val) => {
+    if ('nullValue' in val) return null;
+    if ('booleanValue' in val) return val.booleanValue;
+    if ('integerValue' in val) return Number(val.integerValue);
+    if ('doubleValue' in val) return val.doubleValue;
+    if ('stringValue' in val) return val.stringValue;
+    if ('arrayValue' in val) return (val.arrayValue.values || []).map(convert);
+    if ('mapValue' in val) return fromFirestore(val.mapValue.fields || {});
+    return null;
+  };
+  return Object.fromEntries(Object.entries(fields).map(([k,v]) => [k, convert(v)]));
 }
 
 async function saveData() {
+  const data = getDataObj();
   if (currentUser) {
-    try { await setDoc(doc(db, 'users', currentUser.uid), getDataObj()); }
-    catch(e) { console.warn('Save failed', e); }
+    try {
+      const token = await getIdToken();
+      const resp = await fetch(firestoreUrl(), {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(toFirestore(data))
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      const s = document.getElementById('sync-status');
+      if (s) { s.textContent = '☁'; s.style.color = 'var(--accent)'; setTimeout(() => s.style.color = 'var(--muted)', 1500); }
+    } catch(e) {
+      console.warn('Save failed', e);
+      const s = document.getElementById('sync-status');
+      if (s) { s.textContent = '⚠'; s.title = 'Save failed: ' + e.message; }
+      // fallback to localStorage
+      try { localStorage.setItem('lifeplanner_v1', JSON.stringify(data)); } catch(_) {}
+    }
   } else {
-    try { localStorage.setItem('lifeplanner_v1', JSON.stringify(getDataObj())); }
-    catch(e) {}
+    try { localStorage.setItem('lifeplanner_v1', JSON.stringify(data)); } catch(_) {}
   }
 }
 
@@ -3053,14 +3104,23 @@ async function loadData() {
   let data = null;
   if (currentUser) {
     try {
-      const snap = await getDoc(doc(db, 'users', currentUser.uid));
-      if (snap.exists()) data = snap.data();
-    } catch(e) { console.warn('Load failed', e); }
+      const token = await getIdToken();
+      const resp = await fetch(firestoreUrl(), {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (resp.ok) {
+        const doc = await resp.json();
+        if (doc.fields) data = fromFirestore(doc.fields);
+      } else if (resp.status !== 404) {
+        throw new Error(await resp.text());
+      }
+    } catch(e) {
+      console.warn('Load failed', e);
+      // fallback to localStorage
+      try { const raw = localStorage.getItem('lifeplanner_v1'); if (raw) data = JSON.parse(raw); } catch(_) {}
+    }
   } else {
-    try {
-      const raw = localStorage.getItem('lifeplanner_v1');
-      if (raw) data = JSON.parse(raw);
-    } catch(e) {}
+    try { const raw = localStorage.getItem('lifeplanner_v1'); if (raw) data = JSON.parse(raw); } catch(_) {}
   }
   if (!data) return;
   if (data.events) state.events = data.events.map(e => { if (!e.endDate) e.endDate = e.date; return e; });
@@ -3121,10 +3181,14 @@ function init() {
       document.getElementById('user-name').textContent = user.displayName?.split(' ')[0] || '';
       document.getElementById('user-avatar').src = user.photoURL || '';
       document.getElementById('user-avatar').style.display = user.photoURL ? 'block' : 'none';
+      document.getElementById('sync-status').textContent = '☁';
+      document.getElementById('sync-status').title = 'Synced to Firebase · ' + user.email;
       hideAuthScreen();
       await loadData();
       renderAll();
     } else {
+      document.getElementById('sync-status').textContent = '⚠';
+      document.getElementById('sync-status').title = 'Not signed in — saving locally only';
       showAuthScreen();
     }
   });
