@@ -3092,6 +3092,16 @@ async function saveData() {
       console.warn('Save failed', e);
       const s = document.getElementById('sync-status');
       if (s) { s.textContent = '⚠'; s.title = 'Save failed: ' + e.message; }
+      // show persistent error banner
+      let banner = document.getElementById('sync-error-banner');
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'sync-error-banner';
+        banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#c44;color:#fff;font-size:11px;font-family:monospace;padding:8px 12px;z-index:9999;white-space:pre-wrap;cursor:pointer;';
+        banner.onclick = () => banner.remove();
+        document.body.appendChild(banner);
+      }
+      banner.textContent = 'SAVE ERROR (tap to dismiss):\n' + e.message + '\n' + (e.stack||'');
       // fallback to localStorage
       try { localStorage.setItem('lifeplanner_v1', JSON.stringify(data)); } catch(_) {}
     }
