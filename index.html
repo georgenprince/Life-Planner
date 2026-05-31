@@ -553,7 +553,74 @@
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
   .tag-label { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-family: var(--mono); margin-right: 4px; cursor: pointer; }
 
-  /* habit rows tighter on mobile */
+  /* DESKTOP LAYOUT */
+  @media (min-width: 960px) {
+    body { font-size: 14px; }
+    .content { padding: 20px 24px; }
+    .desktop-layout {
+      display: grid;
+      grid-template-columns: 55% 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    .desktop-left {
+      position: sticky;
+      top: 44px;
+    }
+    .desktop-right {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    /* bigger calendar on desktop */
+    .week-cal { border-radius: 14px; }
+    .day-col { min-height: 120px; }
+    .month-cell { height: 100px; }
+    .month-event-layer { top: 28px; }
+    /* month view taller cells for better readability */
+    .month-bar { height: 15px; font-size: 9px; }
+    .month-bar-row { height: 16px; }
+    /* habits grid stays 2-col on desktop */
+    .grid-2 { grid-template-columns: 1fr 1fr; gap: 16px; }
+    /* wider modals on desktop */
+    .modal { border-radius: 14px; max-width: 480px; }
+    .lists-popup { border-radius: 14px; }
+    .modal-overlay, .lists-overlay { align-items: center; }
+    /* topbar bigger */
+    .topbar { height: 52px; padding: 0 24px; }
+    .page-title { font-size: 15px; }
+    /* card heads slightly more padding */
+    .card-head { padding: 14px 18px 12px; }
+    .card-body { padding: 14px 18px; }
+    /* hide arrange hint on desktop — right-click works */
+    .cal-header h2 { font-size: 18px; }
+  }
+
+  /* DESKTOP MODAL OVERRIDES */
+  @media (min-width: 960px) {
+    .modal-overlay { align-items: center; }
+    .modal {
+      border-radius: 14px !important;
+      animation: modalInCenter 0.2s ease;
+    }
+    .lists-overlay { align-items: center; }
+    .lists-popup {
+      border-radius: 14px !important;
+      max-width: 520px;
+      max-height: 80vh;
+    }
+    .dur-sheet-overlay { align-items: center; }
+    .dur-sheet { border-radius: 14px !important; max-width: 400px; }
+    .gym-overlay { align-items: center; }
+  }
+  @keyframes modalInCenter {
+    from { transform: translateY(8px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+    .desktop-layout { display: flex; flex-direction: column; gap: 14px; }
+    .desktop-left, .desktop-right { width: 100%; }
+    .desktop-right { display: flex; flex-direction: column; gap: 14px; }
+  }
   .habit-name { font-size: 14px; }
   .habit-days { gap: 4px; }
 
@@ -866,64 +933,59 @@
     </div>
 
     <div class="content">
+      <div class="desktop-layout">
 
-      <!-- WEEK CALENDAR -->
-      <div class="week-cal" id="cal-section">
-        <div class="cal-header">
-          <h2 id="cal-title"></h2>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div class="cal-nav">
-              <button onclick="navCal(-1)">‹</button>
-              <button onclick="navCal(1)">›</button>
-              <button onclick="goToday()" style="font-size:11px;padding:0 8px;width:auto;font-family:var(--mono)">today</button>
+        <!-- LEFT: CALENDAR -->
+        <div class="desktop-left">
+          <div class="week-cal" id="cal-section">
+            <div class="cal-header">
+              <h2 id="cal-title"></h2>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div class="cal-nav">
+                  <button onclick="navCal(-1)">‹</button>
+                  <button onclick="navCal(1)">›</button>
+                  <button onclick="goToday()" style="font-size:11px;padding:0 8px;width:auto;font-family:var(--mono)">today</button>
+                </div>
+                <div class="view-toggle">
+                  <button class="view-btn active" id="week-view-btn" onclick="setView('week')">Week</button>
+                  <button class="view-btn" id="month-view-btn" onclick="setView('month')">Month</button>
+                </div>
+              </div>
             </div>
-            <div class="view-toggle">
-              <button class="view-btn active" id="week-view-btn" onclick="setView('week')">Week</button>
-              <button class="view-btn" id="month-view-btn" onclick="setView('month')">Month</button>
+
+            <!-- WEEK VIEW -->
+            <div id="week-view">
+              <div class="week-grid" id="week-header-row"></div>
+              <div style="position:relative;" id="week-body-wrapper">
+                <div class="week-grid" id="week-body"></div>
+                <div id="week-event-overlay" style="position:absolute;top:0;left:0;right:0;pointer-events:none;z-index:2;padding:6px 0 0;display:flex;flex-direction:column;gap:2px;"></div>
+              </div>
+            </div>
+
+            <!-- MONTH VIEW -->
+            <div id="month-view" style="display:none; overflow:hidden;">
+              <div class="month-inner" id="month-dow-row"></div>
+              <div id="month-weeks-container"></div>
             </div>
           </div>
         </div>
 
-        <!-- WEEK VIEW -->
-        <div id="week-view">
-          <div class="week-grid" id="week-header-row">
-            <!-- day headers injected by JS -->
-          </div>
-          <div style="position:relative;" id="week-body-wrapper">
-            <div class="week-grid" id="week-body">
-              <!-- day columns injected by JS -->
-            </div>
-            <div id="week-event-overlay" style="position:absolute;top:0;left:0;right:0;pointer-events:none;z-index:2;padding:6px 0 0;display:flex;flex-direction:column;gap:2px;">
-              <!-- spanning bars injected by JS -->
-            </div>
-          </div>
-        </div>
+        <!-- RIGHT: CARDS -->
+        <div class="desktop-right" id="desktop-right">
 
-        <!-- MONTH VIEW -->
-        <div id="month-view" style="display:none; overflow:hidden;">
-          <div class="month-inner" id="month-dow-row">
-            <!-- DOW headers injected by JS -->
-          </div>
-          <div id="month-weeks-container">
-            <!-- week rows injected by JS, each is position:relative -->
-          </div>
-        </div>
-      </div>
-
-      <!-- HABITS + GOALS -->
-      <div class="grid-2" id="habits-section">
-
-        <!-- HABITS -->
-        <div class="card" data-card-id="habits">
-          <div class="card-head" oncontextmenu="openArrangeCards(event)">
-            <h3>Habits</h3>
-            <div class="head-btns">
-              <button class="edit-btn" onclick="toggleEdit('habits-list', this)">edit</button>
-              <button class="add-btn" onclick="openModal('habit')">+</button>
+          <!-- HABITS + GOALS -->
+          <div class="grid-2" id="habits-section">
+            <!-- HABITS -->
+            <div class="card" data-card-id="habits">
+              <div class="card-head" oncontextmenu="openArrangeCards(event)">
+                <h3>Habits</h3>
+                <div class="head-btns">
+                  <button class="edit-btn" onclick="toggleEdit('habits-list', this)">edit</button>
+                  <button class="add-btn" onclick="openModal('habit')">+</button>
+                </div>
+              </div>
+              <div class="card-body" id="habits-list"></div>
             </div>
-          </div>
-          <div class="card-body" id="habits-list"></div>
-        </div>
 
 <!-- HABIT DETAIL POPUP -->
 <div class="lists-overlay" id="habit-detail-overlay" onclick="closeHabitDetail(event)">
@@ -952,68 +1014,70 @@
   </div>
 </div>
 
-        <!-- GOALS -->
-        <div class="card" data-card-id="goals">
-          <div class="card-head" oncontextmenu="openArrangeCards(event)">
-            <h3>Goals & Milestones</h3>
-            <div class="head-btns">
-              <button class="edit-btn" onclick="toggleEdit('goals-list', this)">edit</button>
-              <button class="add-btn" onclick="openModal('goal')">+</button>
+            <!-- GOALS -->
+            <div class="card" data-card-id="goals">
+              <div class="card-head" oncontextmenu="openArrangeCards(event)">
+                <h3>Goals & Milestones</h3>
+                <div class="head-btns">
+                  <button class="edit-btn" onclick="toggleEdit('goals-list', this)">edit</button>
+                  <button class="add-btn" onclick="openModal('goal')">+</button>
+                </div>
+              </div>
+              <div class="card-body" id="goals-list"></div>
             </div>
           </div>
-          <div class="card-body" id="goals-list"></div>
-        </div>
-      </div>
 
-      <!-- GYM -->
-      <div class="card" data-card-id="gym">
-        <div class="card-head" oncontextmenu="openArrangeCards(event)">
-          <h3>Gym</h3>
-          <div class="head-btns">
-            <button class="add-btn" onclick="openGymPopup()">+</button>
+          <!-- GYM -->
+          <div class="card" data-card-id="gym">
+            <div class="card-head" oncontextmenu="openArrangeCards(event)">
+              <h3>Gym</h3>
+              <div class="head-btns">
+                <button class="add-btn" onclick="openGymPopup()">+</button>
+              </div>
+            </div>
+            <div class="card-body" id="gym-card-body"></div>
           </div>
-        </div>
-        <div class="card-body" id="gym-card-body"></div>
-      </div>
 
-      <!-- TO DO -->
-      <div class="card" data-card-id="todo">
-        <div class="card-head" oncontextmenu="openArrangeCards(event)">
-          <h3>To Do</h3>
-          <div class="head-btns">
-            <button class="edit-btn" onclick="toggleEdit('todo-list', this)">edit</button>
-            <button class="add-btn" onclick="openTodoModal()">+</button>
+          <!-- TO DO -->
+          <div class="card" data-card-id="todo">
+            <div class="card-head" oncontextmenu="openArrangeCards(event)">
+              <h3>To Do</h3>
+              <div class="head-btns">
+                <button class="edit-btn" onclick="toggleEdit('todo-list', this)">edit</button>
+                <button class="add-btn" onclick="openTodoModal()">+</button>
+              </div>
+            </div>
+            <div class="card-body" id="todo-list"></div>
           </div>
-        </div>
-        <div class="card-body" id="todo-list"></div>
-      </div>
 
-      <!-- FINANCE -->
-      <div class="card" data-card-id="finance">
-        <div class="card-head" oncontextmenu="openArrangeCards(event)">
-          <h3>Spending Tracker</h3>
-          <div class="head-btns">
-            <button class="edit-btn" onclick="toggleEdit('budget-rows', this)">edit</button>
-            <button class="add-btn" onclick="openModal('budget')">+</button>
+          <!-- FINANCE -->
+          <div class="card" data-card-id="finance">
+            <div class="card-head" oncontextmenu="openArrangeCards(event)">
+              <h3>Spending Tracker</h3>
+              <div class="head-btns">
+                <button class="edit-btn" onclick="toggleEdit('budget-rows', this)">edit</button>
+                <button class="add-btn" onclick="openModal('budget')">+</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="finance-summary"></div>
+              <div id="budget-rows"></div>
+            </div>
           </div>
-        </div>
-        <div class="card-body">
-          <div id="finance-summary"></div>
-          <div id="budget-rows"></div>
-        </div>
-      </div>
 
-      <!-- LISTS -->
-      <div class="card lists-trigger" data-card-id="lists" onclick="openListsPopup()">
-        <div class="card-head" style="cursor:pointer;" oncontextmenu="openArrangeCards(event)">
-          <h3>Lists</h3>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span id="lists-total-badge" style="font-family:var(--mono);font-size:10px;color:var(--muted)"></span>
-            <span style="font-size:16px;color:var(--muted)">›</span>
+          <!-- LISTS -->
+          <div class="card lists-trigger" data-card-id="lists" onclick="openListsPopup()">
+            <div class="card-head" style="cursor:pointer;" oncontextmenu="openArrangeCards(event)">
+              <h3>Lists</h3>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span id="lists-total-badge" style="font-family:var(--mono);font-size:10px;color:var(--muted)"></span>
+                <span style="font-size:16px;color:var(--muted)">›</span>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
+        </div><!-- /desktop-right -->
+      </div><!-- /desktop-layout -->
     </div><!-- /content -->
 
 <!-- GYM POPUP -->
@@ -2940,39 +3004,37 @@ function getCardState() {
 
 function applyCardLayout() {
   const layout = getCardState();
-  const content = document.querySelector('.content');
-  const cal = document.querySelector('.week-cal');
+  const isDesktop = window.innerWidth >= 960;
+  const cardContainer = isDesktop
+    ? document.getElementById('desktop-right')
+    : document.querySelector('.desktop-right');
 
-  // collect card elements
   const cardEls = {};
   document.querySelectorAll('[data-card-id]').forEach(el => {
     cardEls[el.dataset.cardId] = el;
   });
   const habitsGrid = cardEls['habits']?.closest('.grid-2');
 
+  // apply visibility
   layout.forEach(({ id, hidden }) => {
-    const el = cardEls[id];
-    if (!el) return;
-    if (hidden) {
-      el.classList.add('card-hidden');
-    } else {
-      el.classList.remove('card-hidden');
-    }
-  });
-
-  // reorder visible cards in the DOM
-  const calSection = document.querySelector('.week-cal');
-  let insertAfter = calSection;
-  layout.forEach(({ id, hidden }) => {
-    if (hidden) return;
     const el = cardEls[id];
     if (!el) return;
     const node = (id === 'habits' || id === 'goals') ? habitsGrid : el;
-    if (node && node !== insertAfter) {
-      insertAfter.after(node);
-    }
-    insertAfter = node || insertAfter;
+    if (node) node.classList.toggle('card-hidden', !!hidden);
   });
+
+  // reorder inside the right column
+  if (cardContainer) {
+    layout.forEach(({ id, hidden }) => {
+      if (hidden) return;
+      const el = cardEls[id];
+      if (!el) return;
+      const node = (id === 'habits' || id === 'goals') ? habitsGrid : el;
+      if (node && node.parentElement === cardContainer) {
+        cardContainer.appendChild(node);
+      }
+    });
+  }
 }
 
 function openArrangeCards(e) {
@@ -3262,7 +3324,15 @@ async function loadData() {
   if (data.health)     state.health     = data.health;
   if (data.gym)        state.gym        = data.gym;
   if (data.lists)      state.lists      = Object.assign({ recipes:[], shows:[], books:[], places:[], notes:[] }, data.lists);
-  if (data.cardLayout) state.cardLayout = data.cardLayout;
+  if (data.cardLayout) {
+    // merge saved layout with any new cards added since last save
+    const savedIds = new Set(data.cardLayout.map(c => c.id));
+    const merged = [...data.cardLayout];
+    CARD_DEFS.forEach(def => {
+      if (!savedIds.has(def.id)) merged.push({ id: def.id, hidden: false });
+    });
+    state.cardLayout = merged;
+  }
   if (data.todos) state.todos = data.todos;
 }
 
