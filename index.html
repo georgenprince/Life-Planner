@@ -774,6 +774,18 @@
   }
   .gym-set-input:focus { border-color: var(--accent); outline: none; }
   .gym-prev { font-size: 9px; color: var(--muted); font-family: var(--mono); text-align: center; }
+  /* PROFILE MENU */
+  .menu-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 14px; font-size: 12px; cursor: pointer;
+    color: var(--text); border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .menu-item:last-child { border-bottom: none; }
+  .menu-item:hover { background: var(--bg); }
+  .menu-item-danger { color: #c44; }
+
+  /* ARRANGE CARDS */
   #arrange-overlay { z-index: 300; }
   .arrange-row {
     display: flex; align-items: center; gap: 12px;
@@ -815,18 +827,23 @@
       <div class="topbar-left">
         <span class="page-title" id="today-label"></span>
       </div>
-      <div class="topbar-right">
-        <span class="weather-icon" id="w-icon" style="font-size:16px"></span>
-        <span class="weather-temp" id="w-temp" style="font-family:var(--mono);font-size:13px;font-weight:600"></span>
-        <span id="w-desc" style="font-size:10px;color:var(--muted)"></span>
-        <span style="font-size:10px;color:var(--muted);font-family:var(--mono)" id="w-hilo"></span>
-        <button id="dark-toggle" onclick="toggleDarkMode()"
-          style="background:none;border:1px solid var(--border);border-radius:20px;padding:3px 8px;font-size:12px;cursor:pointer;color:var(--muted);font-family:var(--mono);margin-left:4px;transition:all 0.15s">
-          ◑
-        </button>
-        <span id="user-name" style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-left:4px"></span>
-        <span id="sync-status" style="font-size:12px;color:var(--muted);margin-left:2px;cursor:default" title=""></span>
-        <img id="user-avatar" style="width:24px;height:24px;border-radius:50%;display:none;cursor:pointer" title="Sign out" onclick="signOutUser()">
+      <div class="topbar-right" style="position:relative">
+        <span id="sync-status" style="font-size:12px;color:var(--muted);cursor:default" title=""></span>
+        <img id="user-avatar" style="width:28px;height:28px;border-radius:50%;display:none;cursor:pointer;border:2px solid var(--border);margin-left:6px" onclick="toggleProfileMenu()">
+        <div id="profile-menu" style="display:none;position:absolute;top:40px;right:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.15);width:200px;z-index:500;overflow:hidden;">
+          <div id="profile-menu-name" style="padding:12px 14px 10px;font-size:12px;font-weight:600;color:var(--text);border-bottom:1px solid var(--border)"></div>
+          <div class="menu-item" onclick="toggleDarkMode();updateDarkIndicator();">
+            <span id="dark-mode-label">Dark Mode</span>
+            <span id="dark-mode-indicator" style="font-size:14px;color:var(--muted)">◑</span>
+          </div>
+          <div class="menu-item" onclick="location.reload()">
+            <span>Refresh</span>
+            <span style="font-size:13px;color:var(--muted)">↺</span>
+          </div>
+          <div class="menu-item menu-item-danger" onclick="signOutUser()">
+            <span>Sign out</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -2287,7 +2304,7 @@ function getModalForm(type) {
         <option value="blue">Blue</option>
         <option value="magenta">Magenta</option>
         <option value="purple">Purple</option>
-        <option value="gray">Gray</option>
+        <option value="gray" selected>Gray</option>
       </select>
     </div>`;
   if (type==='habit') return `
@@ -2397,7 +2414,7 @@ function saveModal() {
     if (!title) return;
     const startDate = g('f-date');
     const endDate = g('f-enddate') || startDate;
-    state.events.push({ id: Date.now(), title, date: startDate, endDate: endDate >= startDate ? endDate : startDate, color: g('f-color')||'green' });
+    state.events.push({ id: Date.now(), title, date: startDate, endDate: endDate >= startDate ? endDate : startDate, color: g('f-color')||'gray' });
     renderCal();
   } else if (t==='habit') {
     const name = g('f-title'); if (!name) return;
@@ -2580,27 +2597,6 @@ function closeRecipeDetail(e) {
   document.getElementById('recipe-detail-overlay').classList.remove('open');
 }
 
-
-const WMO = {
-  0:'Clear',1:'Mostly Clear',2:'Partly Cloudy',3:'Overcast',
-  45:'Foggy',48:'Icy Fog',
-  51:'Light Drizzle',53:'Drizzle',55:'Heavy Drizzle',
-  61:'Light Rain',63:'Rain',65:'Heavy Rain',
-  71:'Light Snow',73:'Snow',75:'Heavy Snow',77:'Snow Grains',
-  80:'Showers',81:'Heavy Showers',82:'Violent Showers',
-  85:'Snow Showers',86:'Heavy Snow Showers',
-  95:'Thunderstorm',96:'Thunderstorm w/ Hail',99:'Severe Thunderstorm'
-};
-const WMO_ICON = {
-  0:'☀️',1:'🌤',2:'⛅',3:'☁️',
-  45:'🌫',48:'🌫',
-  51:'🌦',53:'🌦',55:'🌧',
-  61:'🌧',63:'🌧',65:'🌧',
-  71:'🌨',73:'❄️',75:'❄️',77:'🌨',
-  80:'🌦',81:'🌧',82:'⛈',
-  85:'🌨',86:'❄️',
-  95:'⛈',96:'⛈',99:'⛈'
-};
 
 // ──────────────────────────────────────────────
 // GYM
@@ -2939,47 +2935,41 @@ function setupCardLongPress() {
   });
 }
 
-async function loadWeather() {
-  if (!navigator.geolocation) {
-    document.getElementById('w-desc').textContent = 'Location unavailable';
-    return;
+function toggleProfileMenu() {
+  const menu = document.getElementById('profile-menu');
+  const isOpen = menu.style.display !== 'none';
+  menu.style.display = isOpen ? 'none' : '';
+  if (!isOpen) {
+    // close on outside click
+    setTimeout(() => document.addEventListener('click', closeProfileMenuOutside), 0);
   }
-  navigator.geolocation.getCurrentPosition(async pos => {
-    const { latitude: lat, longitude: lon } = pos.coords;
-    try {
-      // reverse geocode for city name
-      const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
-      const geoData = await geoRes.json();
-      const city = geoData.address.city || geoData.address.town || geoData.address.village || geoData.address.county || '';
-      document.getElementById('w-location').textContent = city;
-
-      // weather from Open-Meteo (free, no key)
-      const wx = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m&daily=temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&windspeed_unit=mph&forecast_days=1&timezone=auto`);
-      const data = await wx.json();
-      const cur = data.current;
-      const daily = data.daily;
-      const code = cur.weathercode;
-
-      document.getElementById('w-icon').textContent = WMO_ICON[code] || '🌡';
-      document.getElementById('w-temp').textContent = Math.round(cur.temperature_2m) + '°';
-      document.getElementById('w-desc').textContent = WMO[code] || '';
-      document.getElementById('w-hilo').textContent = `${Math.round(daily.temperature_2m_max[0])}° / ${Math.round(daily.temperature_2m_min[0])}°`;
-    } catch {
-      document.getElementById('w-desc').textContent = 'Weather unavailable';
-    }
-  }, () => {
-    document.getElementById('w-desc').textContent = 'Location denied';
-  });
+}
+function closeProfileMenu() {
+  document.getElementById('profile-menu').style.display = 'none';
+}
+function closeProfileMenuOutside(e) {
+  const menu = document.getElementById('profile-menu');
+  const avatar = document.getElementById('user-avatar');
+  if (!menu.contains(e.target) && e.target !== avatar) {
+    menu.style.display = 'none';
+    document.removeEventListener('click', closeProfileMenuOutside);
+  }
 }
 
-// ──────────────────────────────────────────────
-// DARK MODE
-// ──────────────────────────────────────────────
+
+function updateDarkIndicator() {
+  const isDark = document.body.classList.contains('dark');
+  const label = document.getElementById('dark-mode-label');
+  const indicator = document.getElementById('dark-mode-indicator');
+  if (label) label.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+  if (indicator) indicator.textContent = isDark ? '○' : '◑';
+}
+
 function toggleDarkMode() {
   document.body.classList.toggle('dark');
   const isDark = document.body.classList.contains('dark');
   localStorage.setItem('planner_dark', isDark ? '1' : '0');
-  document.getElementById('dark-toggle').textContent = isDark ? '○' : '◑';
+  updateDarkIndicator();
 }
 
 function loadDarkMode() {
@@ -2987,8 +2977,8 @@ function loadDarkMode() {
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   if (saved === '1' || (saved === null && prefersDark)) {
     document.body.classList.add('dark');
-    document.getElementById('dark-toggle').textContent = '○';
   }
+  updateDarkIndicator();
 }
 
 // ──────────────────────────────────────────────
@@ -3164,7 +3154,7 @@ function renderAll() {
   initGym(); renderGymCard();
   renderList('recipes'); renderList('shows'); renderList('books');
   renderList('places'); renderList('notes');
-  applyCardLayout(); setupCardLongPress(); loadWeather();
+  applyCardLayout(); setupCardLongPress();
 }
 
 function init() {
@@ -3186,17 +3176,18 @@ function init() {
     openEventEdit, deleteEvent,
     openGymPopup, openGymLogger, openGymSession, saveGymSession, closeGymPopup,
     openArrangeCards, closeArrangeCards, toggleCardVisibility,
-    deleteListItem,
+    deleteListItem, toggleProfileMenu, updateDarkIndicator,
   });
   showAuthScreen();
   onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     if (user) {
-      document.getElementById('user-name').textContent = user.displayName?.split(' ')[0] || '';
       document.getElementById('user-avatar').src = user.photoURL || '';
       document.getElementById('user-avatar').style.display = user.photoURL ? 'block' : 'none';
+      const menuName = document.getElementById('profile-menu-name');
+      if (menuName) menuName.textContent = user.displayName || user.email || '';
       document.getElementById('sync-status').textContent = '☁';
-      document.getElementById('sync-status').title = 'Synced to Firebase · ' + user.email;
+      document.getElementById('sync-status').title = 'Synced · ' + user.email;
       hideAuthScreen();
       await loadData();
       renderAll();
