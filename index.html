@@ -3039,7 +3039,7 @@ function getDataObj() {
 
 // ── Firestore via REST ──
 function firestoreUrl() {
-  return `https://firestore.googleapis.com/v1/projects/life-planner-dashboard/databases/(default)/documents/users/${currentUser.uid}`;
+  return `https://firestore.googleapis.com/v1/projects/life-planner-dashboard/databases/life-planner-dashboard-database/documents/users/${currentUser.uid}`;
 }
 
 async function getIdToken() {
