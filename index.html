@@ -87,6 +87,7 @@
   /* CONTENT */
   .content { padding: 14px 12px; display: flex; flex-direction: column; gap: 14px; }
   .desktop-layout { display: flex; flex-direction: column; gap: 14px; }
+  .desktop-two-col { display: flex; flex-direction: column; gap: 14px; }
 
   /* WEEK CALENDAR */
   .week-cal {
@@ -306,7 +307,34 @@
   body.dark .event-bar.gray { background: rgba(255,255,255,0.06); color: #aaa; }
   .month-grid { display: none; }
   .month-grid.visible { display: block; }
+  .week-grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); }
   .week-grid.hidden { display: none; }
+  .week-day-header {
+    text-align: center; padding: 8px 2px 6px;
+    border-right: 1px solid var(--border);
+  }
+  .week-day-header:last-child { border-right: none; }
+  .week-day-header.pto { background: #f3e8ff; }
+  body.dark .week-day-header.pto { background: rgba(147,51,234,0.15); }
+  .day-col {
+    border-right: 1px solid var(--border);
+    padding: 4px 2px; min-height: 60px;
+    cursor: pointer; overflow: hidden;
+  }
+  .day-col:last-child { border-right: none; }
+  .day-col.pto { background: #f3e8ff; }
+  body.dark .day-col.pto { background: rgba(147,51,234,0.1); }
+  .day-bullet { display: flex; align-items: flex-start; gap: 3px; padding: 1px 0; }
+  .day-bullet-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; }
+  .day-bullet-text { font-size: 9px; overflow: hidden; white-space: normal; word-break: normal; overflow-wrap: break-word; color: var(--text); line-height: 1.3; }
+  .day-bullet-dot.green { background: var(--accent); }
+  .day-bullet-dot.orange { background: var(--accent2); }
+  .day-bullet-dot.red { background: #c0392b; }
+  .day-bullet-dot.yellow { background: #f1c40f; }
+  .day-bullet-dot.blue { background: #2e86c1; }
+  .day-bullet-dot.magenta { background: #8e44ad; }
+  .day-bullet-dot.purple { background: #9333ea; }
+  .day-bullet-dot.gray { background: #bbb; }
   .month-inner {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -354,7 +382,7 @@
     top: 26px;
     left: 0; right: 0;
     pointer-events: none;
-    z-index: 2;
+    z-index: 3;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -363,8 +391,9 @@
   .month-bar-row {
     display: grid;
     grid-template-columns: repeat(7, minmax(0,1fr));
-    pointer-events: all;
+    pointer-events: none;
     height: 14px;
+    background: transparent;
   }
   .month-bar {
     height: 13px;
@@ -381,6 +410,7 @@
   .month-bar.start { border-radius: 3px 0 0 3px; }
   .month-bar.solo { border-radius: 3px; }
   .month-bar.end { border-radius: 0 3px 3px 0; }
+  .month-bar:not(.empty) { pointer-events: all; }
   .month-bar.empty { background: transparent !important; pointer-events: none; }
   .month-bar.green { background: var(--accent-light); color: var(--accent); }
   .month-bar.orange { background: var(--accent2-light); color: var(--accent2); }
@@ -658,6 +688,7 @@
     .week-cal { border-radius: 14px; }
     /* desktop cal overrides */
     .day-col { min-height: 120px; }
+    .day-bullet-text { white-space: nowrap; text-overflow: ellipsis; }
     .month-cell { height: 100px; }
     .month-event-layer { top: 28px; }
     .month-bar { height: 15px; font-size: 9px; }
@@ -1034,22 +1065,32 @@
                   <button onclick="goToday()" style="font-size:11px;padding:0 8px;width:auto;font-family:var(--mono)">today</button>
                 </div>
                 <div class="view-toggle">
+                  <button class="view-btn" id="day-view-btn" onclick="setView('day')">Day</button>
                   <button class="view-btn active" id="week-view-btn" onclick="setView('week')">Week</button>
                   <button class="view-btn" id="month-view-btn" onclick="setView('month')">Month</button>
                 </div>
               </div>
             </div>
 
+            <!-- DAY VIEW -->
+            <div id="day-view" style="display:none;">
+              <div class="wv-header-row" id="day-header-row"></div>
+              <div class="wv-allday-row" id="day-allday-row">
+                <div class="wv-time-gutter" style="border-right:1px solid var(--border);padding:4px 4px 4px 0;font-size:8px;color:var(--muted);font-family:var(--mono);text-align:right;flex-shrink:0">all‑day</div>
+                <div class="wv-allday-grid" id="day-allday-grid" style="grid-template-columns:1fr"></div>
+              </div>
+              <div class="wv-scroll" id="day-scroll">
+                <div class="wv-time-body" id="day-time-body"></div>
+              </div>
+            </div>
+
             <!-- WEEK VIEW -->
             <div id="week-view">
-              <div class="wv-header-row" id="week-header-row"></div>
-              <div class="wv-allday-row" id="week-allday-row">
-                <div class="wv-time-gutter" style="border-right:1px solid var(--border);padding:4px 4px 4px 0;font-size:8px;color:var(--muted);font-family:var(--mono);text-align:right;flex-shrink:0">all‑day</div>
-                <div class="wv-allday-grid" id="week-allday-grid"></div>
+              <div class="week-grid" id="week-header-row"></div>
+              <div id="week-spanning-row" style="display:none;position:relative;border-bottom:1px solid var(--border);">
+                <div id="week-spanning-col-lines" class="week-grid" style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;"></div>
               </div>
-              <div class="wv-scroll" id="week-scroll">
-                <div class="wv-time-body" id="week-time-body"></div>
-              </div>
+              <div class="week-grid" id="week-body"></div>
             </div>
 
             <!-- MONTH VIEW -->
@@ -1388,6 +1429,7 @@ const state = {
   budget: { categories: [] },
   todos: [],
   modalType: null,
+  dayOffset: 0,
 };
 
 // ──────────────────────────────────────────────
@@ -1432,7 +1474,7 @@ function getVisibleHourRange(days) {
 }
 
 function fmtTime(h, m) {
-  const ampm = h >= 12 ? 'pm' : 'am';
+  const ampm = h >= 12 ? 'p' : 'a';
   const hr = h % 12 || 12;
   return m ? `${hr}:${String(m).padStart(2,'0')}${ampm}` : `${hr}${ampm}`;
 }
@@ -1512,65 +1554,77 @@ function renderWeek() {
   // ── HEADER ROW ──────────────────────────────
   const headerRow = document.getElementById('week-header-row');
   headerRow.innerHTML = '';
-  // gutter spacer
-  const gutterHdr = document.createElement('div');
-  gutterHdr.className = 'wv-time-gutter';
-  gutterHdr.style.cssText = 'border-right:1px solid var(--border);border-bottom:none;';
-  headerRow.appendChild(gutterHdr);
-
   days.forEach(d => {
     const isToday = sameDay(d, state.today);
     const hasPTO = state.events.some(e => eventSpansDate(e, d) && e.color === 'purple');
     const div = document.createElement('div');
-    div.className = 'wv-day-header' + (hasPTO ? ' pto' : '');
+    div.className = 'week-day-header' + (hasPTO ? ' pto' : '');
     div.style.cursor = 'pointer';
     div.innerHTML = `<div class="wdh-name">${DAYS[d.getDay()]}</div>
       <div class="wdh-date${isToday?' today':''}">${d.getDate()}</div>`;
-    div.onclick = () => openModalWithDate('event', dateStr(d));
+    div.onclick = () => tapDayHeader(dateStr(d));
     headerRow.appendChild(div);
   });
 
-  // ── ALL-DAY STRIP ───────────────────────────
-  // All-day = no startTime, single day events + multi-day spanning events
-  const alldayGrid = document.getElementById('week-allday-grid');
-  alldayGrid.innerHTML = '';
-
-  // multi-day spanning events (live in overlay over all-day grid)
+  // ── DAY COLUMNS ─────────────────────────────
   const spannedEvents = state.events.filter(e => {
     const end = e.endDate || e.date;
     return end > e.date && days.some(d => eventSpansDate(e, d));
   });
+  const spannedIds = new Set(spannedEvents.map(e => e.id));
 
-  // single-day untimed events per column
+  const body = document.getElementById('week-body');
+  body.innerHTML = '';
+
   days.forEach(d => {
     const ds = dateStr(d);
     const col = document.createElement('div');
     const hasPTO = state.events.some(e => eventSpansDate(e, d) && e.color === 'purple');
-    col.className = 'wv-allday-col' + (hasPTO ? ' pto' : '');
+    col.className = 'day-col' + (hasPTO ? ' pto' : '');
     col.onclick = () => openModalWithDate('event', ds);
-    // single-day untimed events
+
+    // all events for this day (not spanning) — untimed first, then timed by time
     state.events
-      .filter(e => e.date === ds && (!e.endDate || e.endDate === e.date) && !e.startTime)
+      .filter(e => eventSpansDate(e, d) && !spannedIds.has(e.id))
+      .sort((a, b) => {
+        if (!a.startTime && !b.startTime) return 0;
+        if (!a.startTime) return -1;
+        if (!b.startTime) return 1;
+        return a.startTime.localeCompare(b.startTime);
+      })
       .forEach(e => {
         const bullet = document.createElement('div');
-        bullet.className = 'wv-allday-bullet';
-        bullet.innerHTML = `<div class="wv-allday-dot" style="background:${colorDot(e.color)}"></div><div class="wv-allday-text">${e.title}</div>`;
+        bullet.className = 'day-bullet';
+        const timePrefix = e.startTime ? `<span style="font-size:8px;opacity:0.7;margin-right:2px">${fmtTime(...e.startTime.split(':').map(Number))}</span>` : '';
+        bullet.innerHTML = `<div class="day-bullet-dot ${e.color}"></div><div class="day-bullet-text">${timePrefix}${e.title}</div>`;
         bullet.onclick = evt => { evt.stopPropagation(); openEventEdit(e.id); };
         col.appendChild(bullet);
       });
-    alldayGrid.appendChild(col);
+    body.appendChild(col);
   });
 
-  // spanning bars overlay in all-day strip
-  let overlay = alldayGrid.querySelector('.wv-allday-overlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.className = 'wv-allday-overlay';
-    alldayGrid.style.position = 'relative';
-    alldayGrid.appendChild(overlay);
+  // show/hide border on header row depending on spanning events
+  document.getElementById('week-header-row').style.borderBottom =
+    spannedEvents.length > 0 ? 'none' : '1px solid var(--border)';
+
+  // ── SPANNING BARS STRIP ──────────────────────
+  const spanningRow = document.getElementById('week-spanning-row');
+  spanningRow.innerHTML = '';
+
+  // rebuild column line dividers
+  const colLines = document.createElement('div');
+  colLines.id = 'week-spanning-col-lines';
+  colLines.className = 'week-grid';
+  colLines.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:0;';
+  for (let i = 0; i < 7; i++) {
+    const cell = document.createElement('div');
+    cell.style.cssText = `background:transparent;border-right:${i===6?'none':'1px solid var(--border)'};`;
+    colLines.appendChild(cell);
   }
-  overlay.innerHTML = '';
+  spanningRow.appendChild(colLines);
+
   if (spannedEvents.length > 0) {
+    spanningRow.style.display = '';
     const rows = [];
     spannedEvents.forEach(e => {
       const s = Math.max(0, days.findIndex(d => dateStr(d) >= e.date));
@@ -1582,6 +1636,9 @@ function renderWeek() {
       }
       if (!placed) rows.push([{e,s,en}]);
     });
+    // build a flex-column container inside the spanning row
+    const container = document.createElement('div');
+    container.style.cssText = 'display:flex;flex-direction:column;gap:2px;padding:2px 0;width:100%;position:relative;z-index:1;background:transparent;';
     rows.forEach(row => {
       const rowEl = document.createElement('div');
       rowEl.className = 'month-bar-row';
@@ -1594,7 +1651,7 @@ function renderWeek() {
         else {
           const span = slot.en - slot.s + 1;
           const isStart = slot.s === i;
-          const isSolo = slot.e.date >= weekStartStr && (slot.e.endDate||slot.e.date) <= weekEndStr && slot.e.date === (slot.e.endDate||slot.e.date);
+          const isSolo = slot.e.date === (slot.e.endDate||slot.e.date);
           const bar = document.createElement('div');
           bar.className = `month-bar ${slot.e.color}${isSolo?' solo':isStart?' start':''}`;
           if (!isSolo && slot.en === i+span-1) bar.className += ' end';
@@ -1605,79 +1662,15 @@ function renderWeek() {
           i += span;
         }
       }
-      overlay.appendChild(rowEl);
+      container.appendChild(rowEl);
     });
-    // expand allday strip height for spanning bars
-    const alldayRow = document.getElementById('week-allday-row');
-    alldayRow.style.minHeight = (28 + rows.length * 16) + 'px';
+    spanningRow.appendChild(container);
+  } else {
+    spanningRow.style.display = 'none';
   }
 
-  // ── TIME GRID ───────────────────────────────
-  const timeBody = document.getElementById('week-time-body');
-  timeBody.innerHTML = '';
-
-  const { dayStart, dayEnd } = getVisibleHourRange(days);
-  const hours = Array.from({length: dayEnd - dayStart}, (_, i) => i + dayStart);
-
-  // time label column
-  const timeCol = document.createElement('div');
-  timeCol.className = 'wv-time-col';
-  hours.forEach(h => {
-    const lbl = document.createElement('div');
-    lbl.className = 'wv-time-label';
-    lbl.textContent = fmtTime(h, 0);
-    timeCol.appendChild(lbl);
-  });
-  timeBody.appendChild(timeCol);
-
-  // day columns
-  const daysGrid = document.createElement('div');
-  daysGrid.className = 'wv-days-grid';
-
-  days.forEach(d => {
-    const ds = dateStr(d);
-    const hasPTO = state.events.some(e => eventSpansDate(e, d) && e.color === 'purple');
-    const col = document.createElement('div');
-    col.className = 'wv-day-col' + (hasPTO ? ' pto' : '');
-
-    // hour cells (clickable)
-    hours.forEach(h => {
-      const cell = document.createElement('div');
-      cell.className = 'wv-hour-cell';
-      cell.onclick = () => openModalWithDate('event', ds, h);
-      col.appendChild(cell);
-    });
-
-    // timed events for this day
-    const timedEvents = state.events.filter(e =>
-      e.date === ds && (!e.endDate || e.endDate === ds) && e.startTime
-    );
-
-    timedEvents.forEach(e => {
-      const startMins = eventToMinutes(e.startTime);
-      const endMins = eventToMinutes(e.endTime) || startMins + 60;
-      const startHour = startMins / 60;
-      const endHour = endMins / 60;
-      if (startHour >= dayEnd || endHour <= dayStart) return;
-
-      const clampedStart = Math.max(startHour, dayStart);
-      const clampedEnd = Math.min(endHour, dayEnd);
-      const top = (clampedStart - dayStart) * HOUR_HEIGHT;
-      const trueHeight = (clampedEnd - clampedStart) * HOUR_HEIGHT;
-      const visualHeight = Math.max(trueHeight, HOUR_HEIGHT * 0.5); // min 30min visual
-
-      const block = document.createElement('div');
-      block.className = `wv-event-block ${e.color}`;
-      block.style.cssText = `top:${top}px;height:${visualHeight}px;`;
-      block.innerHTML = `<div class="wv-dur-bar" style="height:${trueHeight}px"></div><div class="ev-title">${e.title}</div>`;
-      block.onclick = evt => { evt.stopPropagation(); openEventEdit(e.id); };
-      col.appendChild(block);
-    });
-
-    daysGrid.appendChild(col);
-  });
-
-  timeBody.appendChild(daysGrid);
+  // reset any old padding
+  document.querySelectorAll('#week-body .day-col').forEach(col => col.style.paddingTop = '');
 }
 
 function colorDot(color) {
@@ -1728,6 +1721,11 @@ function renderMonth() {
       dayDiv.className = 'mday';
       dayDiv.textContent = d.getDate();
       cell.appendChild(dayDiv);
+      // full-cell click catcher so tapping anywhere in cell works
+      const clickCatcher = document.createElement('div');
+      clickCatcher.style.cssText = 'position:absolute;inset:0;z-index:1;cursor:pointer;';
+      clickCatcher.onclick = () => openModalWithDate('event', dateStr(d));
+      cell.appendChild(clickCatcher);
       weekRow.appendChild(cell);
     });
 
@@ -1829,28 +1827,169 @@ function makeMonthCell(d, other) {
 
 function setView(v) {
   state.calView = v;
-  document.getElementById('week-view').style.display = v==='week'?'':'none';
-  document.getElementById('month-view').style.display = v==='month'?'':'none';
+  localStorage.setItem('planner_calview', v);
+  document.getElementById('day-view').style.display = v==='day' ? '' : 'none';
+  document.getElementById('week-view').style.display = v==='week' ? '' : 'none';
+  document.getElementById('month-view').style.display = v==='month' ? '' : 'none';
+  document.getElementById('day-view-btn').classList.toggle('active', v==='day');
   document.getElementById('week-view-btn').classList.toggle('active', v==='week');
   document.getElementById('month-view-btn').classList.toggle('active', v==='month');
   renderCal();
   renderHabits();
 }
+
+function loadCalView() {
+  const saved = localStorage.getItem('planner_calview');
+  if (saved === 'month') setView('month');
+  else if (saved === 'day') setView('day');
+}
+
 function navCal(dir) {
   if (state.calView==='week') state.weekOffset += dir;
-  else state.monthOffset += dir;
+  else if (state.calView==='month') state.monthOffset += dir;
+  else state.dayOffset += dir;
   renderCal();
-  if (state.calView==='week') renderHabits();
+  if (state.calView !== 'month') renderHabits();
 }
+
 function goToday() {
-  state.weekOffset = 0; state.monthOffset = 0;
+  state.weekOffset = 0; state.monthOffset = 0; state.dayOffset = 0;
   renderCal();
   renderHabits();
 }
+
 function renderCal() {
   if (state.calView==='week') renderWeek();
-  else renderMonth();
+  else if (state.calView==='month') renderMonth();
+  else renderDay();
 }
+
+function getDayDate() {
+  const d = new Date(state.today);
+  d.setDate(d.getDate() + state.dayOffset);
+  return d;
+}
+
+// tap day header on mobile → switch to day view for that date
+function tapDayHeader(ds) {
+  if (window.innerWidth < 960) {
+    // calculate dayOffset from today
+    const today = state.today;
+    const target = new Date(ds);
+    const diff = Math.round((target - new Date(dateStr(today))) / 86400000);
+    state.dayOffset = diff;
+    setView('day');
+  } else {
+    openModalWithDate('event', ds);
+  }
+}
+
+function renderDay() {
+  const d = getDayDate();
+  const ds = dateStr(d);
+
+  // title
+  document.getElementById('cal-title').textContent =
+    `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+
+  // header row - single day
+  const headerRow = document.getElementById('day-header-row');
+  headerRow.innerHTML = '';
+  // time gutter spacer
+  const gutter = document.createElement('div');
+  gutter.className = 'wv-time-gutter';
+  gutter.style.cssText = 'border-right:1px solid var(--border);flex-shrink:0';
+  headerRow.appendChild(gutter);
+  // single day header
+  const isToday = sameDay(d, state.today);
+  const hasPTO = state.events.some(e => eventSpansDate(e, d) && e.color === 'purple');
+  const dayHead = document.createElement('div');
+  dayHead.className = 'wv-day-header' + (hasPTO ? ' pto' : '');
+  dayHead.style.flex = '1';
+  dayHead.innerHTML = `<div class="wdh-name">${DAYS[d.getDay()]}</div>
+    <div class="wdh-date${isToday?' today':''}">${d.getDate()}</div>`;
+  dayHead.onclick = () => openModalWithDate('event', ds);
+  headerRow.appendChild(dayHead);
+
+  // all-day strip
+  const alldayGrid = document.getElementById('day-allday-grid');
+  alldayGrid.innerHTML = '';
+  const alldayCol = document.createElement('div');
+  alldayCol.className = 'wv-allday-col' + (hasPTO ? ' pto' : '');
+  alldayCol.onclick = () => openModalWithDate('event', ds);
+
+  // all-day / multi-day events
+  const alldayEvents = state.events.filter(e => eventSpansDate(e, d) && !e.startTime);
+  alldayEvents.forEach(e => {
+    const pill = document.createElement('div');
+    pill.className = `month-bar solo ${e.color}`;
+    pill.style.cssText = 'margin:2px 2px;height:16px;font-size:10px;padding:2px 6px;border-radius:4px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    pill.textContent = e.title;
+    pill.onclick = evt => { evt.stopPropagation(); openEventEdit(e.id); };
+    alldayCol.appendChild(pill);
+  });
+  alldayGrid.appendChild(alldayCol);
+
+  // time grid
+  const timeBody = document.getElementById('day-time-body');
+  timeBody.innerHTML = '';
+
+  const { dayStart, dayEnd } = getVisibleHourRange([d]);
+  const hours = Array.from({length: dayEnd - dayStart}, (_, i) => i + dayStart);
+
+  // time label column
+  const timeCol = document.createElement('div');
+  timeCol.className = 'wv-time-col';
+  hours.forEach(h => {
+    const lbl = document.createElement('div');
+    lbl.className = 'wv-time-label';
+    lbl.textContent = fmtTime(h, 0);
+    timeCol.appendChild(lbl);
+  });
+  timeBody.appendChild(timeCol);
+
+  // single day column
+  const daysGrid = document.createElement('div');
+  daysGrid.className = 'wv-days-grid';
+  daysGrid.style.gridTemplateColumns = '1fr';
+
+  const col = document.createElement('div');
+  col.className = 'wv-day-col' + (hasPTO ? ' pto' : '');
+  hours.forEach(h => {
+    const cell = document.createElement('div');
+    cell.className = 'wv-hour-cell';
+    cell.onclick = () => openModalWithDate('event', ds, h);
+    col.appendChild(cell);
+  });
+
+  // timed events
+  const timedEvents = state.events.filter(e =>
+    e.date === ds && (!e.endDate || e.endDate === ds) && e.startTime
+  );
+  timedEvents.forEach(e => {
+    const startMins = eventToMinutes(e.startTime);
+    const endMins = eventToMinutes(e.endTime) || startMins + 60;
+    const startHour = startMins / 60;
+    const endHour = endMins / 60;
+    if (startHour >= dayEnd || endHour <= dayStart) return;
+    const clampedStart = Math.max(startHour, dayStart);
+    const clampedEnd = Math.min(endHour, dayEnd);
+    const top = (clampedStart - dayStart) * HOUR_HEIGHT;
+    const trueHeight = (clampedEnd - clampedStart) * HOUR_HEIGHT;
+    const visualHeight = Math.max(trueHeight, HOUR_HEIGHT * 0.5);
+    const block = document.createElement('div');
+    block.className = `wv-event-block ${e.color}`;
+    block.style.cssText = `top:${top}px;height:${visualHeight}px;`;
+    block.innerHTML = `<div class="wv-dur-bar" style="height:${trueHeight}px"></div><div class="ev-title">${e.title}</div>`;
+    block.onclick = evt => { evt.stopPropagation(); openEventEdit(e.id); };
+    col.appendChild(block);
+  });
+
+  daysGrid.appendChild(col);
+  timeBody.appendChild(daysGrid);
+}
+
+
 
 // ──────────────────────────────────────────────
 // EDIT MODE / DRAG REORDER
@@ -1965,6 +2104,10 @@ function deleteItem(arr, id, renderFn) {
       if (el) el.classList.add('edit-mode');
     });
   }, 0);
+}
+
+function deleteHabit(id) {
+  deleteItem(state.habits, id, renderHabits);
 }
 
 
@@ -2114,7 +2257,7 @@ function renderHabits() {
           </div>
           <span class="monthly-month">${monthLabel}</span>
         </div>
-        <button class="delete-btn" onclick="deleteItem(state.habits,${h.id},renderHabits)">×</button>
+        <button class="delete-btn" onclick="deleteHabit(${h.id})">×</button>
       </div>`;
     }
 
@@ -2154,7 +2297,7 @@ function renderHabits() {
         ${nameEl}
         <button class="habit-edit-btn" onclick="openHabitEditModal(${h.id})">✎</button>
         <div class="habit-days">${days}</div>
-        <button class="delete-btn" onclick="deleteItem(state.habits,${h.id},renderHabits)">×</button>
+        <button class="delete-btn" onclick="deleteHabit(${h.id})">×</button>
         ${weekBar}
       </div>`;
     }
@@ -2172,7 +2315,7 @@ function renderHabits() {
       ${nameEl}
       <button class="habit-edit-btn" onclick="openHabitEditModal(${h.id})">✎</button>
       <div class="habit-days">${days}</div>
-      <button class="delete-btn" onclick="deleteItem(state.habits,${h.id},renderHabits)">×</button>
+      <button class="delete-btn" onclick="deleteHabit(${h.id})">×</button>
     </div>`;
   }).join('');
 
@@ -3555,6 +3698,7 @@ function renderAll() {
   renderList('recipes'); renderList('shows'); renderList('books');
   renderList('places'); renderList('notes');
   applyCardLayout();
+  loadCalView();
 }
 
 function init() {
@@ -3562,13 +3706,13 @@ function init() {
   // expose to window for inline onclick handlers (required for ES modules)
   Object.assign(window, {
     signInWithGoogle, signOutUser, toggleDarkMode,
-    navCal, goToday, setView, openModalWithDate,
+    navCal, goToday, setView, loadCalView, tapDayHeader, openModalWithDate,
     openModal, closeModal, saveModal,
     toggleEdit, toggleHabit, toggleMonthlyHabit,
     openHabitDetail, closeHabitDetail,
     openHabitEditModal, selectHabitType, selectGoalType,
     openDurSheet, logDuration, closeDurSheet,
-    deleteItem, renderHabits, renderFinance, renderGymCard,
+    deleteItem, deleteHabit, renderHabits, renderFinance, renderGymCard,
     deleteBudgetCat, openChargePopup, closeChargePopup, addCharge, deleteCharge, renameCat,
     openListsPopup, closeListsPopup, toggleListSec, openListModal,
     openRecipeDetail, closeRecipeDetail,
